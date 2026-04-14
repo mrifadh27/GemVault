@@ -1,0 +1,1 @@
+export { CertificationBadge } from './index';
