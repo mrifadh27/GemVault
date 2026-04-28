@@ -4,7 +4,7 @@ A full-stack, production-ready multi-vendor gemstone e-commerce platform built w
 
 ---
 
-## 🏗️ Architecture
+##  Architecture
 
 ```
 Frontend:  Next.js 14 (App Router) + TypeScript
@@ -25,7 +25,7 @@ Realtime:  Supabase Realtime (inventory, notifications)
 
 ---
 
-## 🚀 Quick Start
+##  Quick Start
 
 ### 1. Clone and install
 
@@ -75,7 +75,7 @@ Open [http://localhost:3000](http://localhost:3000)
 
 ---
 
-## 📁 Project Structure
+##  Project Structure
 
 ```
 gemvault/
@@ -136,7 +136,7 @@ gemvault/
 
 ---
 
-## 🎨 Design System
+##  Design System
 
 The app uses a luxury dark theme with:
 
@@ -147,7 +147,7 @@ The app uses a luxury dark theme with:
 
 ---
 
-## 💳 Payment Flow
+##  Payment Flow
 
 1. Buyer adds items to cart → proceeds to checkout
 2. Shipping address form → Stripe Elements card form
@@ -162,7 +162,7 @@ The app uses a luxury dark theme with:
 
 ---
 
-## 🏪 Seller Onboarding
+##  Seller Onboarding
 
 1. Register as seller → `seller_profiles` row created (status: `pending`)
 2. Admin reviews and approves the seller
@@ -172,7 +172,7 @@ The app uses a luxury dark theme with:
 
 ---
 
-## 🔐 Row Level Security
+##  Row Level Security
 
 All Supabase tables have RLS policies:
 - **Buyers**: own orders, cart, wishlist, profile
@@ -182,7 +182,7 @@ All Supabase tables have RLS policies:
 
 ---
 
-## 📧 Email Templates
+##  Email Templates
 
 All emails use a luxury dark HTML template and are sent via Resend:
 - Welcome email (buyer + seller)
@@ -195,7 +195,7 @@ All emails use a luxury dark HTML template and are sent via Resend:
 
 ---
 
-## ⚡ Realtime Features
+##  Realtime Features
 
 - **Inventory**: Live stock updates via Supabase Realtime when stock changes
 - **Viewer Count**: Presence channels show "X people viewing this"
@@ -203,7 +203,7 @@ All emails use a luxury dark HTML template and are sent via Resend:
 
 ---
 
-## 🔧 Database Triggers
+##  Database Triggers
 
 - `update_product_rating()` — recalculates after every review change
 - `update_seller_rating()` — same for seller aggregate rating
@@ -231,7 +231,7 @@ All emails use a luxury dark HTML template and are sent via Resend:
 
 ---
 
-## 📦 Deployment
+##  Deployment
 
 ### Vercel
 
@@ -247,7 +247,7 @@ In Supabase Dashboard → Storage → Policies, ensure your domain is allowed fo
 
 ---
 
-## 🛠️ Scripts
+##  Scripts
 
 ```bash
 npm run dev           # Start development server
@@ -259,7 +259,7 @@ npm run stripe:listen # Forward Stripe webhooks to localhost
 
 ---
 
-## 📊 Platform Fee Structure
+##  Platform Fee Structure
 
 - Default platform fee: **8%** (configurable per seller in admin)
 - Stripe Connect: seller receives `(sale_price - platform_fee)` automatically
@@ -268,14 +268,10 @@ npm run stripe:listen # Forward Stripe webhooks to localhost
 
 ---
 
-## 🔑 Admin Setup
+##  Admin Setup
 
 To create the first admin user, after registration run this in Supabase SQL Editor:
 
 ```sql
 UPDATE profiles SET role = 'admin' WHERE email = 'your@email.com';
 ```
-
----
-
-Built with ❤️ for the gemstone community.
