@@ -65,7 +65,7 @@ npm install
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) 🎉
+Open [http://localhost:3000](http://localhost:3000) 
 
 ---
 
@@ -153,7 +153,3 @@ Update `NEXT_PUBLIC_APP_URL` to your production URL in Supabase Auth settings:
 - **No Stripe needed**: everything is DM-based
 - **Google OAuth**: works out of the box with Supabase — just enable it in Supabase Auth → Providers
 - **Images**: stored in Supabase Storage, CDN-served globally
-
----
-
-Built with ❤️ for the gem community.
