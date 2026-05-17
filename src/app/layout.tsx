@@ -1,78 +1,35 @@
 import type { Metadata, Viewport } from 'next';
-import { Cormorant_Garamond, DM_Sans } from 'next/font/google';
-import { Providers } from '@/components/providers';
-import { Navbar } from '@/components/layout/Navbar';
-import { Footer } from '@/components/layout/Footer';
-import { CartDrawer } from '@/components/layout/CartDrawer';
-import { ToastContainer } from '@/components/common/Toast';
 import './globals.css';
-
-const cormorant = Cormorant_Garamond({
-  subsets: ['latin'],
-  weight: ['300', '400', '500', '600', '700'],
-  variable: '--font-cormorant',
-  display: 'swap',
-});
-
-const dmSans = DM_Sans({
-  subsets: ['latin'],
-  weight: ['300', '400', '500', '600', '700'],
-  variable: '--font-dm-sans',
-  display: 'swap',
-});
+import { Providers } from '@/components/providers/Providers';
 
 export const metadata: Metadata = {
-  title: {
-    default: 'GemVault — Premium Gemstone Marketplace',
-    template: '%s | GemVault',
-  },
-  description:
-    'Discover certified gemstones from verified sellers worldwide. Rubies, sapphires, emeralds, diamonds, and more.',
-  keywords: ['gemstones', 'precious stones', 'certified gems', 'ruby', 'sapphire', 'emerald', 'diamond', 'marketplace'],
-  authors: [{ name: 'GemVault' }],
-  creator: 'GemVault',
+  title: { default: 'GemGram', template: '%s · GemGram' },
+  description: 'The Instagram for gem lovers. Buy & sell rare gemstones via DM.',
+  keywords: ['gemstones', 'ruby', 'sapphire', 'emerald', 'gems', 'gemology'],
   openGraph: {
+    title: 'GemGram',
+    description: 'The Instagram for gem lovers.',
     type: 'website',
-    locale: 'en_US',
-    url: process.env.NEXT_PUBLIC_APP_URL,
-    siteName: 'GemVault',
-    title: 'GemVault — Premium Gemstone Marketplace',
-    description: 'Discover certified gemstones from verified sellers worldwide.',
-    images: [{ url: '/og-image.jpg', width: 1200, height: 630, alt: 'GemVault' }],
-  },
-  twitter: {
-    card: 'summary_large_image',
-    title: 'GemVault — Premium Gemstone Marketplace',
-    description: 'Discover certified gemstones from verified sellers worldwide.',
-    images: ['/og-image.jpg'],
-  },
-  icons: {
-    icon: '/favicon.ico',
-    shortcut: '/favicon-16x16.png',
-    apple: '/apple-touch-icon.png',
   },
 };
 
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
-  themeColor: '#0a0a0f',
+  maximumScale: 1,
+  themeColor: '#080808',
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${cormorant.variable} ${dmSans.variable}`}>
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+      </head>
       <body className="bg-obsidian text-ivory font-sans antialiased">
         <Providers>
-          <Navbar />
-          <main className="min-h-screen">{children}</main>
-          <Footer />
-          <CartDrawer />
-          <ToastContainer />
+          {children}
         </Providers>
       </body>
     </html>

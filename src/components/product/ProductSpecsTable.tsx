@@ -1,1 +1,0 @@
-export { ProductSpecsTable } from './index';

@@ -1,1 +1,0 @@
-export { SellerOrdersTable } from './index';

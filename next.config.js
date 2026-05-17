@@ -2,25 +2,13 @@
 const nextConfig = {
   images: {
     remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: '*.supabase.co',
-        pathname: '/storage/v1/object/public/**',
-      },
-      {
-        protocol: 'https',
-        hostname: 'ui-avatars.com',
-      },
-      {
-        protocol: 'https',
-        hostname: 'images.unsplash.com',
-      },
+      { protocol: 'https', hostname: '*.supabase.co' },
+      { protocol: 'https', hostname: 'ui-avatars.com' },
+      { protocol: 'https', hostname: 'images.unsplash.com' },
     ],
   },
   experimental: {
-    serverActions: {
-      allowedOrigins: ['localhost:3000'],
-    },
+    serverActions: { allowedOrigins: ['localhost:3000'] },
   },
 };
 

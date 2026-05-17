@@ -1,1 +1,0 @@
-export { ProductSkeleton } from './index';

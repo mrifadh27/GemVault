@@ -8,12 +8,9 @@ export function createClient() {
   );
 }
 
-// Singleton for client-side use
-let client: ReturnType<typeof createClient> | null = null;
+let _client: ReturnType<typeof createClient> | null = null;
 
 export function getSupabaseBrowserClient() {
-  if (!client) {
-    client = createClient();
-  }
-  return client;
+  if (!_client) _client = createClient();
+  return _client;
 }

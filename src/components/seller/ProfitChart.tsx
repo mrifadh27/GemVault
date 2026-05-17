@@ -1,1 +1,0 @@
-export { ProfitChart } from './index';

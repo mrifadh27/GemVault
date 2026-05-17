@@ -1,5 +1,6 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { createServerClient } from '@supabase/ssr';
-import { type NextRequest, NextResponse } from 'next/server';
+import { NextResponse, type NextRequest } from 'next/server';
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
@@ -9,15 +10,11 @@ export async function updateSession(request: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        getAll() {
-          return request.cookies.getAll();
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) =>
-            request.cookies.set(name, value)
-          );
+        getAll() { return request.cookies.getAll(); },
+        setAll(cookiesToSet: any[]) {
+          cookiesToSet.forEach(({ name, value }: any) => request.cookies.set(name, value));
           supabaseResponse = NextResponse.next({ request });
-          cookiesToSet.forEach(({ name, value, options }) =>
+          cookiesToSet.forEach(({ name, value, options }: any) =>
             supabaseResponse.cookies.set(name, value, options)
           );
         },
@@ -25,54 +22,21 @@ export async function updateSession(request: NextRequest) {
     }
   );
 
-  // Refresh session if expired - important for Server Components
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { data: { user } } = await supabase.auth.getUser();
+  const { pathname } = request.nextUrl;
 
-  // Protected routes that require authentication
-  const protectedRoutes = ['/buyer', '/seller', '/checkout', '/cart'];
-  const adminRoutes = ['/admin'];
-  const sellerRoutes = ['/seller'];
-  const authRoutes = ['/login', '/register'];
+  const protectedRoutes = ['/create', '/messages', '/profile/edit'];
+  const isProtected = protectedRoutes.some(route => pathname.startsWith(route));
 
-  const pathname = request.nextUrl.pathname;
-  const isProtectedRoute = protectedRoutes.some((route) =>
-    pathname.startsWith(route)
-  );
-  const isAdminRoute = adminRoutes.some((route) => pathname.startsWith(route));
-  const isSellerRoute = sellerRoutes.some((route) =>
-    pathname.startsWith(route)
-  );
-  const isAuthRoute = authRoutes.some((route) => pathname.startsWith(route));
-
-  // Redirect unauthenticated users away from protected routes
-  if (!user && isProtectedRoute) {
-    const redirectUrl = new URL('/login', request.url);
-    redirectUrl.searchParams.set('redirect', pathname);
-    return NextResponse.redirect(redirectUrl);
+  if (isProtected && !user) {
+    const url = request.nextUrl.clone();
+    url.pathname = '/auth';
+    url.searchParams.set('next', pathname);
+    return NextResponse.redirect(url);
   }
 
-  // Redirect authenticated users away from auth routes
-  if (user && isAuthRoute) {
-    return NextResponse.redirect(new URL('/marketplace', request.url));
-  }
-
-  // For admin/seller routes, check role in database
-  if (user && (isAdminRoute || isSellerRoute)) {
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single();
-
-    if (isAdminRoute && profile?.role !== 'admin') {
-      return NextResponse.redirect(new URL('/marketplace', request.url));
-    }
-
-    if (isSellerRoute && !['seller', 'admin'].includes(profile?.role ?? '')) {
-      return NextResponse.redirect(new URL('/marketplace', request.url));
-    }
+  if (user && pathname === '/auth') {
+    return NextResponse.redirect(new URL('/', request.url));
   }
 
   return supabaseResponse;

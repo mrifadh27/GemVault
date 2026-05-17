@@ -1,1 +1,0 @@
-export { ProductPerformanceTable } from './index';

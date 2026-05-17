@@ -1,1 +1,0 @@
-export { ProductSearch } from './index';

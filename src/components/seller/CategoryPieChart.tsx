@@ -1,1 +1,0 @@
-export { CategoryPieChart } from './index';
