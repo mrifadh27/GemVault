@@ -166,6 +166,18 @@ export async function POST(request: NextRequest) {
       if (imgError) console.error('Image insert error:', imgError);
     }
 
+    // Update total_posts count on the seller's profile (re-count from real data)
+    const { count: postCount } = await supabase
+      .from('gem_posts')
+      .select('*', { count: 'exact', head: true })
+      .eq('seller_id', user.id)
+      .eq('is_active', true);
+
+    await supabase
+      .from('profiles')
+      .update({ total_posts: postCount ?? 1 })
+      .eq('id', user.id);
+
     return NextResponse.json({ data: post }, { status: 201 });
   } catch (err: unknown) {
     return NextResponse.json({ error: (err as Error).message }, { status: 500 });

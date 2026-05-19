@@ -102,6 +102,8 @@ export interface DmMessage {
   thread_id: string;
   sender_id: string;
   content: string;
+  media_url: string | null;
+  media_type: 'image' | 'video' | null;
   is_read: boolean;
   created_at: string;
   profiles?: Pick<Profile, 'id' | 'username' | 'avatar_url'>;

@@ -16,18 +16,25 @@ export async function POST(request: NextRequest) {
 
     if (!file) return NextResponse.json({ error: 'No file provided' }, { status: 400 });
 
-    // Validate file type
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/heic'];
+    // Allowed types — images for gems, images+video for DM
+    const imageTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/gif'];
+    const videoTypes = ['video/mp4', 'video/quicktime', 'video/webm', 'video/x-msvideo'];
+    const isDmBucket = bucket === 'dm-media';
+    const allowedTypes = isDmBucket ? [...imageTypes, ...videoTypes] : imageTypes;
+
     if (!allowedTypes.includes(file.type)) {
-      return NextResponse.json({ error: 'Only JPEG, PNG, WebP, or HEIC images are allowed' }, { status: 400 });
+      const allowed = isDmBucket ? 'JPEG, PNG, WebP, GIF, MP4, MOV, WebM' : 'JPEG, PNG, WebP, or HEIC';
+      return NextResponse.json({ error: `Only ${allowed} files are allowed` }, { status: 400 });
     }
 
-    // Max 10MB
-    if (file.size > 10 * 1024 * 1024) {
-      return NextResponse.json({ error: 'File too large (max 10MB)' }, { status: 400 });
+    // Max size: 50MB for videos, 10MB for images
+    const isVideo = videoTypes.includes(file.type);
+    const maxSize = isVideo ? 50 * 1024 * 1024 : 10 * 1024 * 1024;
+    if (file.size > maxSize) {
+      return NextResponse.json({ error: `File too large (max ${isVideo ? '50MB' : '10MB'})` }, { status: 400 });
     }
 
-    const ext = file.name.split('.').pop() || 'jpg';
+    const ext = file.name.split('.').pop() || (isVideo ? 'mp4' : 'jpg');
     const filename = `${user.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
 
     const { data, error } = await supabase.storage
@@ -40,7 +47,7 @@ export async function POST(request: NextRequest) {
       .from(bucket)
       .getPublicUrl(data.path);
 
-    return NextResponse.json({ url: publicUrl, path: data.path });
+    return NextResponse.json({ url: publicUrl, path: data.path, media_type: isVideo ? 'video' : 'image' });
   } catch (err: unknown) {
     console.error('Upload error:', err);
     return NextResponse.json({ error: (err as Error).message }, { status: 500 });

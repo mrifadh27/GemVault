@@ -49,8 +49,13 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const { content } = await req.json();
-    if (!content?.trim()) return NextResponse.json({ error: 'Content required' }, { status: 400 });
+    const body = await req.json();
+    const { content, media_url, media_type } = body;
+
+    // Must have either text or media
+    if (!content?.trim() && !media_url) {
+      return NextResponse.json({ error: 'Content or media required' }, { status: 400 });
+    }
 
     const { data: thread } = await supabase
       .from('dm_threads')
@@ -64,7 +69,13 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
     const { data: message, error } = await supabase
       .from('dm_messages')
-      .insert({ thread_id: params.id, sender_id: user.id, content: content.trim() })
+      .insert({
+        thread_id: params.id,
+        sender_id: user.id,
+        content: content?.trim() || '',
+        media_url: media_url || null,
+        media_type: media_type || null,
+      })
       .select()
       .single();
 

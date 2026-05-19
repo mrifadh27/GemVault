@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Send, ArrowLeft, Loader2, MessageCircle } from 'lucide-react';
+import { Send, ArrowLeft, Loader2, MessageCircle, Image as ImageIcon, Video, X, Play } from 'lucide-react';
 import { cn, formatRelativeDate, getImageUrl } from '@/lib/utils';
 import { Avatar } from '@/components/common/Avatar';
 import { useAuth } from '@/hooks/useAuth';
@@ -26,6 +26,54 @@ async function fetchThread(id: string): Promise<{ thread: DmThread; messages: Dm
   return data;
 }
 
+// ── Media bubble component ────────────────────────────────────────────────────
+function MediaBubble({ msg, isMe }: { msg: DmMessage; isMe: boolean }) {
+  const [playing, setPlaying] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  if (!msg.media_url) return null;
+
+  if (msg.media_type === 'video') {
+    return (
+      <div className="relative rounded-xl overflow-hidden max-w-[240px]" style={{ minWidth: 160 }}>
+        <video
+          ref={videoRef}
+          src={msg.media_url}
+          className="w-full rounded-xl"
+          controls
+          playsInline
+          preload="metadata"
+          style={{ maxHeight: 280 }}
+        />
+        {msg.content && (
+          <p className={cn('text-xs px-1 pt-1', isMe ? 'text-obsidian/80' : 'text-ivory-muted')}>
+            {msg.content}
+          </p>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-1 max-w-[240px]">
+      <a href={msg.media_url} target="_blank" rel="noopener noreferrer">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={msg.media_url}
+          alt="Shared image"
+          className="rounded-xl object-cover w-full"
+          style={{ maxHeight: 280 }}
+        />
+      </a>
+      {msg.content && (
+        <p className={cn('text-xs px-1', isMe ? 'text-obsidian/80' : 'text-ivory-muted')}>
+          {msg.content}
+        </p>
+      )}
+    </div>
+  );
+}
+
 export default function MessagesClient() {
   const searchParams = useSearchParams();
   const { user } = useAuth();
@@ -33,7 +81,10 @@ export default function MessagesClient() {
   const [activeThread, setActiveThread] = useState<string | null>(searchParams.get('thread'));
   const [newMessage, setNewMessage] = useState('');
   const [sending, setSending] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [mediaPreview, setMediaPreview] = useState<{ file: File; url: string; type: 'image' | 'video' } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: threads = [], isLoading } = useQuery({
     queryKey: ['dm-threads'],
@@ -66,24 +117,72 @@ export default function MessagesClient() {
     return () => { supabase.removeChannel(channel); };
   }, [activeThread, user, qc]);
 
+  // Handle file selection for media
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const isVideo = file.type.startsWith('video/');
+    const isImage = file.type.startsWith('image/');
+    if (!isVideo && !isImage) {
+      toast('Only images and videos are supported', 'error');
+      return;
+    }
+
+    const url = URL.createObjectURL(file);
+    setMediaPreview({ file, url, type: isVideo ? 'video' : 'image' });
+    // Reset input so same file can be reselected
+    e.target.value = '';
+  };
+
+  const clearMedia = () => {
+    if (mediaPreview) URL.revokeObjectURL(mediaPreview.url);
+    setMediaPreview(null);
+  };
+
   const sendMessage = async () => {
-    if (!newMessage.trim() || !activeThread || !user) return;
+    if ((!newMessage.trim() && !mediaPreview) || !activeThread || !user) return;
     setSending(true);
     const content = newMessage.trim();
     setNewMessage('');
+
     try {
+      let media_url: string | null = null;
+      let media_type: string | null = null;
+
+      // Upload media first if present
+      if (mediaPreview) {
+        setUploading(true);
+        const form = new FormData();
+        form.append('file', mediaPreview.file);
+        form.append('bucket', 'dm-media');
+        const upRes = await fetch('/api/upload', { method: 'POST', body: form });
+        if (!upRes.ok) {
+          const { error } = await upRes.json();
+          throw new Error(error || 'Upload failed');
+        }
+        const upData = await upRes.json();
+        media_url = upData.url;
+        media_type = upData.media_type;
+        setUploading(false);
+        clearMedia();
+      }
+
       const res = await fetch(`/api/dm/${activeThread}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content }),
+        body: JSON.stringify({ content, media_url, media_type }),
       });
       if (!res.ok) throw new Error('Send failed');
       qc.invalidateQueries({ queryKey: ['dm-thread', activeThread] });
       qc.invalidateQueries({ queryKey: ['dm-threads'] });
-    } catch {
+    } catch (err: unknown) {
       setNewMessage(content);
-      toast('Failed to send', 'error');
-    } finally { setSending(false); }
+      setUploading(false);
+      toast((err as Error).message || 'Failed to send', 'error');
+    } finally {
+      setSending(false);
+    }
   };
 
   if (!user) return (
@@ -104,6 +203,16 @@ export default function MessagesClient() {
   return (
     <main className="flex-1 pt-14 pb-14 sm:pb-0 max-w-4xl mx-auto w-full flex overflow-hidden" style={{ height: 'calc(100vh - 56px)' }}>
       <ToastContainer />
+
+      {/* Hidden file input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*,video/*"
+        className="hidden"
+        onChange={handleFileSelect}
+      />
+
       {/* Thread list */}
       <div className={cn('w-full sm:w-80 border-r border-[#1e1e1e] flex-shrink-0 overflow-y-auto', activeThread && 'hidden sm:block')}>
         <div className="px-4 py-3 border-b border-[#1e1e1e] sticky top-0 bg-obsidian/95 backdrop-blur-sm z-10">
@@ -148,7 +257,10 @@ export default function MessagesClient() {
                     {thread.gem_posts && <p className="text-[10px] text-gold truncate">{thread.gem_posts.title}</p>}
                     {lastMsg && (
                       <p className={cn('text-xs truncate mt-0.5', unread ? 'text-ivory font-medium' : 'text-ivory-subtle')}>
-                        {lastMsg.sender_id === user.id ? 'You: ' : ''}{lastMsg.content}
+                        {lastMsg.sender_id === user.id ? 'You: ' : ''}
+                        {lastMsg.media_url && !lastMsg.content
+                          ? (lastMsg.media_type === 'video' ? '🎥 Video' : '📷 Photo')
+                          : lastMsg.content}
                       </p>
                     )}
                   </div>
@@ -165,6 +277,7 @@ export default function MessagesClient() {
       {/* Chat area */}
       {activeThread ? (
         <div className="flex-1 flex flex-col overflow-hidden">
+          {/* Chat header */}
           <div className="px-4 py-3 border-b border-[#1e1e1e] flex items-center gap-3 bg-obsidian sticky top-0 z-10">
             <button onClick={() => setActiveThread(null)} className="sm:hidden btn-icon w-7 h-7"><ArrowLeft className="w-4 h-4" /></button>
             {otherUser && (
@@ -180,16 +293,34 @@ export default function MessagesClient() {
             )}
           </div>
 
+          {/* Messages */}
           <div className="flex-1 overflow-y-auto p-4 space-y-3">
             {loadingThread ? (
               <div className="flex justify-center py-10"><Loader2 className="w-5 h-5 text-gold animate-spin" /></div>
             ) : messages.map(msg => {
               const isMe = msg.sender_id === user.id;
+              const hasMedia = !!msg.media_url;
+              const hasText = !!msg.content;
               return (
                 <div key={msg.id} className={cn('flex', isMe ? 'justify-end' : 'justify-start')}>
-                  <div className={cn('max-w-[75%] px-4 py-2.5 rounded-2xl text-sm', isMe ? 'bg-gold text-obsidian rounded-br-sm' : 'bg-[#1a1a1a] text-ivory rounded-bl-sm border border-[#2a2a2a]')}>
-                    <p className="leading-relaxed">{msg.content}</p>
-                    <p className={cn('text-[9px] mt-1', isMe ? 'text-obsidian/60' : 'text-ivory-subtle')}>
+                  <div className={cn(
+                    'max-w-[75%] rounded-2xl text-sm',
+                    hasMedia ? 'overflow-hidden' : 'px-4 py-2.5',
+                    isMe
+                      ? (hasMedia ? 'bg-gold/10 border border-gold/30' : 'bg-gold text-obsidian rounded-br-sm')
+                      : (hasMedia ? 'bg-[#1a1a1a] border border-[#2a2a2a]' : 'bg-[#1a1a1a] text-ivory rounded-bl-sm border border-[#2a2a2a]')
+                  )}>
+                    {hasMedia ? (
+                      <div className="p-2">
+                        <MediaBubble msg={msg} isMe={isMe} />
+                      </div>
+                    ) : (
+                      <p className="leading-relaxed">{msg.content}</p>
+                    )}
+                    <p className={cn(
+                      'text-[9px] mt-1',
+                      hasMedia ? (isMe ? 'text-gold/60 px-2 pb-1' : 'text-ivory-subtle px-2 pb-1') : (isMe ? 'text-obsidian/60' : 'text-ivory-subtle')
+                    )}>
                       {formatRelativeDate(msg.created_at)}{isMe && msg.is_read && ' · seen'}
                     </p>
                   </div>
@@ -199,13 +330,55 @@ export default function MessagesClient() {
             <div ref={messagesEndRef} />
           </div>
 
-          <div className="px-4 py-3 border-t border-[#1e1e1e] flex gap-2 bg-obsidian">
-            <input value={newMessage} onChange={e => setNewMessage(e.target.value)}
-              placeholder="Message..." className="input flex-1 py-2.5"
-              onKeyDown={e => e.key === 'Enter' && !e.shiftKey && sendMessage()} />
-            <button onClick={sendMessage} disabled={!newMessage.trim() || sending}
-              className="btn-gold w-10 h-10 rounded-full p-0 flex-shrink-0">
-              {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+          {/* Media preview bar */}
+          {mediaPreview && (
+            <div className="px-4 pt-2 border-t border-[#1e1e1e] bg-obsidian">
+              <div className="relative inline-block">
+                {mediaPreview.type === 'video' ? (
+                  <div className="flex items-center gap-2 bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl px-3 py-2">
+                    <Play className="w-4 h-4 text-gold flex-shrink-0" />
+                    <span className="text-xs text-ivory-muted truncate max-w-40">{mediaPreview.file.name}</span>
+                  </div>
+                ) : (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={mediaPreview.url} alt="Preview" className="h-16 w-16 object-cover rounded-xl border border-[#2a2a2a]" />
+                )}
+                <button
+                  onClick={clearMedia}
+                  className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-[#333] border border-[#444] flex items-center justify-center hover:bg-red-500/80 transition-colors"
+                >
+                  <X className="w-3 h-3 text-ivory" />
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Input bar */}
+          <div className="px-4 py-3 border-t border-[#1e1e1e] flex gap-2 bg-obsidian items-end">
+            {/* Media picker button */}
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={sending || uploading}
+              title="Send photo or video"
+              className="btn-icon w-10 h-10 flex-shrink-0 text-ivory-muted hover:text-gold transition-colors disabled:opacity-40"
+            >
+              <ImageIcon className="w-5 h-5" />
+            </button>
+
+            <input
+              value={newMessage}
+              onChange={e => setNewMessage(e.target.value)}
+              placeholder={mediaPreview ? 'Add a caption...' : 'Message...'}
+              className="input flex-1 py-2.5"
+              onKeyDown={e => e.key === 'Enter' && !e.shiftKey && sendMessage()}
+            />
+
+            <button
+              onClick={sendMessage}
+              disabled={(!newMessage.trim() && !mediaPreview) || sending || uploading}
+              className="btn-gold w-10 h-10 rounded-full p-0 flex-shrink-0"
+            >
+              {(sending || uploading) ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
             </button>
           </div>
         </div>
