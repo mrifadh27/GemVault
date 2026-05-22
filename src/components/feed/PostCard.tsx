@@ -4,12 +4,15 @@ import { useState, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import {
   Heart, MessageCircle, Bookmark, Share2, ChevronLeft, ChevronRight,
-  MoreHorizontal, CheckCircle, MapPin, Award, Tag
+  MoreHorizontal, CheckCircle, MapPin, Award, Tag, DollarSign, Play,
+  Star, Layers
 } from 'lucide-react';
 import { cn, formatPrice, formatRelativeDate, getImageUrl, formatNumber } from '@/lib/utils';
 import { Avatar } from '@/components/common/Avatar';
 import { GemBadge } from '@/components/common/GemBadge';
 import { DMModal } from '@/components/dm/DMModal';
+import { OfferModal } from '@/components/offers/OfferModal';
+import { VideoPlayer } from '@/components/common/VideoPlayer';
 import { useToggleLike } from '@/hooks/usePosts';
 import { useAuth } from '@/hooks/useAuth';
 import type { GemPostWithDetails } from '@/types';
@@ -24,10 +27,12 @@ interface PostCardProps {
 export function PostCard({ post, compact }: PostCardProps) {
   const { user } = useAuth();
   const [imgIndex, setImgIndex] = useState(0);
+  const [showVideo, setShowVideo] = useState(false);
   const [liked, setLiked] = useState(post.is_liked ?? false);
   const [likesCount, setLikesCount] = useState(post.likes_count ?? 0);
   const [saved, setSaved] = useState(post.is_saved ?? false);
   const [showDM, setShowDM] = useState(false);
+  const [showOffer, setShowOffer] = useState(false);
   const [showMore, setShowMore] = useState(false);
   const [heartAnim, setHeartAnim] = useState(false);
   const lastTap = useRef(0);
@@ -36,6 +41,7 @@ export function PostCard({ post, compact }: PostCardProps) {
   const images = post.gem_images || [];
   const currentImg = images[imgIndex];
   const seller = post.profiles;
+  const isOwnPost = user?.id === post.seller_id;
 
   const handleLike = useCallback(async () => {
     if (!user) { toast('Sign in to like posts', 'info'); return; }
@@ -75,9 +81,7 @@ export function PostCard({ post, compact }: PostCardProps) {
         await (supabase.from('post_saves') as any).insert({ post_id: post.id, user_id: user.id });
         toast('Saved! 🔖', 'success');
       }
-    } catch {
-      setSaved(wasSaved);
-    }
+    } catch { setSaved(wasSaved); }
   };
 
   const handleShare = async () => {
@@ -105,17 +109,44 @@ export function PostCard({ post, compact }: PostCardProps) {
                 {seller.is_verified && (
                   <CheckCircle className="w-3.5 h-3.5 text-gold" fill="currentColor" />
                 )}
+                {/* Seller level badge */}
+                {seller.seller_level && seller.seller_level !== 'new' && (
+                  <span className={cn(
+                    'text-[9px] px-1.5 py-0.5 rounded-full font-medium',
+                    seller.seller_level === 'platinum' ? 'bg-slate-400/20 text-slate-300' :
+                    seller.seller_level === 'gold' ? 'bg-gold/20 text-gold' :
+                    seller.seller_level === 'silver' ? 'bg-gray-400/20 text-gray-400' :
+                    'bg-amber-800/20 text-amber-700'
+                  )}>
+                    {seller.seller_level}
+                  </span>
+                )}
               </div>
-              {seller.location && (
-                <div className="flex items-center gap-0.5 text-[10px] text-ivory-subtle">
-                  <MapPin className="w-2.5 h-2.5" />
-                  {seller.location}
-                </div>
-              )}
+              <div className="flex items-center gap-2">
+                {seller.location && (
+                  <div className="flex items-center gap-0.5 text-[10px] text-ivory-subtle">
+                    <MapPin className="w-2.5 h-2.5" />
+                    {seller.location}
+                  </div>
+                )}
+                {/* Seller rating */}
+                {seller.avg_rating && seller.review_count > 0 && (
+                  <div className="flex items-center gap-0.5 text-[10px] text-ivory-subtle">
+                    <Star className="w-2.5 h-2.5 text-gold fill-gold" />
+                    <span className="text-gold">{seller.avg_rating.toFixed(1)}</span>
+                    <span>({seller.review_count})</span>
+                  </div>
+                )}
+              </div>
             </div>
           </Link>
 
           <div className="flex items-center gap-2">
+            {post.is_lot && (
+              <span className="flex items-center gap-0.5 text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30">
+                <Layers className="w-2.5 h-2.5" /> LOT
+              </span>
+            )}
             {post.is_sold && (
               <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 border border-red-500/30">
                 SOLD
@@ -127,14 +158,16 @@ export function PostCard({ post, compact }: PostCardProps) {
           </div>
         </div>
 
-        {/* ── Image ──────────────────────────────── */}
+        {/* ── Media ──────────────────────────────── */}
         <div
           className="relative bg-[#0f0f0f] overflow-hidden"
           style={{ aspectRatio: compact ? '4/3' : '1/1' }}
           onClick={handleDoubleTap}
         >
-          {images.length > 0 ? (
-            // eslint-disable-next-line @next/next/no-img-element
+          {/* Video toggle */}
+          {post.video_url && showVideo ? (
+            <VideoPlayer src={post.video_url} className="w-full h-full" autoPlay />
+          ) : images.length > 0 ? (
             <img
               src={getImageUrl(currentImg?.url)}
               alt={post.title}
@@ -154,8 +187,19 @@ export function PostCard({ post, compact }: PostCardProps) {
             </div>
           )}
 
-          {/* Image nav dots */}
-          {images.length > 1 && (
+          {/* Video switch button */}
+          {post.video_url && (
+            <button
+              onClick={e => { e.stopPropagation(); setShowVideo(v => !v); }}
+              className="absolute top-2.5 right-2.5 flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-full bg-black/60 text-white backdrop-blur"
+            >
+              <Play className="w-2.5 h-2.5" />
+              {showVideo ? 'Photo' : 'Video'}
+            </button>
+          )}
+
+          {/* Image nav */}
+          {!showVideo && images.length > 1 && (
             <>
               <button
                 onClick={e => { e.stopPropagation(); setImgIndex(i => Math.max(0, i - 1)); }}
@@ -175,8 +219,6 @@ export function PostCard({ post, compact }: PostCardProps) {
               >
                 <ChevronRight className="w-4 h-4 text-white" />
               </button>
-
-              {/* Dots */}
               <div className="absolute bottom-2.5 left-0 right-0 flex justify-center gap-1">
                 {images.map((_, i) => (
                   <button
@@ -189,7 +231,7 @@ export function PostCard({ post, compact }: PostCardProps) {
             </>
           )}
 
-          {/* Cert badge overlay */}
+          {/* Cert badge */}
           {post.certification && post.certification !== 'None' && (
             <div className="absolute top-2.5 left-2.5">
               <div className="flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-full bg-gold/90 text-obsidian">
@@ -214,7 +256,6 @@ export function PostCard({ post, compact }: PostCardProps) {
         <div className="px-3 pt-2.5 pb-1">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              {/* Like */}
               <button onClick={handleLike} className="flex items-center gap-1.5 group">
                 <Heart
                   className={cn(
@@ -228,30 +269,30 @@ export function PostCard({ post, compact }: PostCardProps) {
                 </span>
               </button>
 
-              {/* DM button */}
-              <button
-                onClick={() => setShowDM(true)}
-                className="flex items-center gap-1.5 group"
-                disabled={post.is_sold}
-              >
-                <MessageCircle
-                  className={cn(
-                    'w-6 h-6 transition-colors',
-                    post.is_sold ? 'text-[#333]' : 'text-ivory-muted group-hover:text-gold'
-                  )}
-                />
-                <span className={cn('text-xs font-medium', post.is_sold ? 'text-[#333]' : 'text-ivory-muted')}>
-                  DM
-                </span>
-              </button>
+              {/* Comments */}
+              <Link href={`/post/${post.id}#comments`} className="flex items-center gap-1.5 group">
+                <MessageCircle className="w-5 h-5 text-ivory-muted group-hover:text-ivory transition-colors" />
+                {(post.comments_count ?? 0) > 0 && (
+                  <span className="text-xs text-ivory-muted">{formatNumber(post.comments_count ?? 0)}</span>
+                )}
+              </Link>
 
-              {/* Share */}
+              {/* Make an offer (non-owner, not sold, price exists) */}
+              {!isOwnPost && post.price && !post.is_sold && user && (
+                <button
+                  onClick={() => setShowOffer(true)}
+                  className="flex items-center gap-1 text-xs text-ivory-muted hover:text-gold transition-colors group"
+                >
+                  <DollarSign className="w-4 h-4 group-hover:text-gold" />
+                  Offer
+                </button>
+              )}
+
               <button onClick={handleShare} className="group">
                 <Share2 className="w-5 h-5 text-ivory-muted group-hover:text-ivory transition-colors" />
               </button>
             </div>
 
-            {/* Save */}
             <button onClick={handleSave}>
               <Bookmark
                 className={cn('w-5 h-5 transition-all', saved ? 'text-gold fill-gold' : 'text-ivory-muted hover:text-ivory')}
@@ -262,7 +303,6 @@ export function PostCard({ post, compact }: PostCardProps) {
 
         {/* ── Info ───────────────────────────────── */}
         <div className="px-3 pb-3">
-          {/* Badges */}
           <div className="flex flex-wrap items-center gap-1.5 mb-2">
             <GemBadge type={post.gemstone_type} size="sm" />
             {post.carat_weight && (
@@ -280,14 +320,24 @@ export function PostCard({ post, compact }: PostCardProps) {
                 🔥 {post.treatment}
               </span>
             )}
+            {/* Color grading badge */}
+            {post.color_hue && (
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#1a1a1a] text-ivory-muted border border-[#2a2a2a]">
+                🎨 {post.color_hue}
+              </span>
+            )}
+            {/* Lot count */}
+            {post.is_lot && post.lot_stone_count && (
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                🪨 {post.lot_stone_count} stones
+              </span>
+            )}
           </div>
 
-          {/* Title */}
           <div className="mb-1">
             <span className="text-sm font-semibold text-ivory">{post.title}</span>
           </div>
 
-          {/* Description */}
           {post.description && (
             <div>
               <p className={cn('text-xs text-ivory-muted leading-relaxed', !showMore && 'line-clamp-2')}>
@@ -301,29 +351,35 @@ export function PostCard({ post, compact }: PostCardProps) {
             </div>
           )}
 
-          {/* Tags */}
           {post.tags && post.tags.length > 0 && (
             <div className="flex flex-wrap gap-1.5 mt-2">
               {post.tags.map(tag => (
-                <Link key={tag} href={`/explore?tag=${tag}`} className="text-[10px] text-gold/70 hover:text-gold transition-colors">
+                <Link key={tag} href={`/explore?search=${tag}`} className="text-[10px] text-gold/70 hover:text-gold transition-colors">
                   <Tag className="w-2.5 h-2.5 inline mr-0.5" />#{tag}
                 </Link>
               ))}
             </div>
           )}
 
-          {/* "Need DM" button if not sold */}
-          {!post.is_sold && user?.id !== post.seller_id && (
-            <button
-              onClick={() => setShowDM(true)}
-              className="dm-btn mt-3 w-full justify-center"
-            >
-              <MessageCircle className="w-4 h-4" />
-              Need DM · Contact Seller
-            </button>
+          {/* Action buttons */}
+          {!post.is_sold && !isOwnPost && (
+            <div className="flex gap-2 mt-3">
+              <button onClick={() => setShowDM(true)} className="dm-btn flex-1 justify-center">
+                <MessageCircle className="w-4 h-4" />
+                Contact Seller
+              </button>
+              {post.price && user && (
+                <button
+                  onClick={() => setShowOffer(true)}
+                  className="flex items-center justify-center gap-1.5 flex-1 text-xs font-medium py-2 rounded-full border border-gold/40 text-gold hover:bg-gold/10 transition-colors"
+                >
+                  <DollarSign className="w-3.5 h-3.5" />
+                  Make Offer
+                </button>
+              )}
+            </div>
           )}
 
-          {/* Timestamp */}
           <p className="text-[10px] text-ivory-subtle mt-2 uppercase tracking-wider">
             {formatRelativeDate(post.created_at)}
           </p>
@@ -331,6 +387,7 @@ export function PostCard({ post, compact }: PostCardProps) {
       </article>
 
       {showDM && <DMModal post={post} onClose={() => setShowDM(false)} />}
+      {showOffer && <OfferModal post={post} onClose={() => setShowOffer(false)} />}
     </>
   );
 }

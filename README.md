@@ -1,8 +1,8 @@
-# GemGram — Instagram for Gem Sellers
+# 💎 GemGram — Instagram for Gem Sellers
 
 > The fastest way to sell gems online. Post your gems like Instagram, buyers DM you to buy.
 
-## Features
+## ✨ Features
 
 - **Instagram-like feed** — scroll through gem posts with double-tap to like
 - **Category filters** — Ruby, Sapphire, Emerald, Natural, Certified, and more
@@ -14,7 +14,7 @@
 
 ---
 
-## Quick Setup
+## 🚀 Quick Setup (15 minutes)
 
 ### 1. Create a Supabase project
 
@@ -65,11 +65,11 @@ npm install
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) 
+Open [http://localhost:3000](http://localhost:3000) 🎉
 
 ---
 
-## How It Works
+## 📱 How It Works
 
 ### For Sellers
 1. Sign up / Sign in
@@ -86,10 +86,9 @@ Open [http://localhost:3000](http://localhost:3000)
 
 ---
 
-## Project Structure
+## 🗂️ Project Structure
 
 ```
-public/
 src/
 ├── app/
 │   ├── page.tsx              # Main feed (home)
@@ -119,7 +118,7 @@ src/
 
 ---
 
-## Tech Stack
+## 🔧 Tech Stack
 
 | Technology | Purpose |
 |-----------|---------|
@@ -132,7 +131,7 @@ src/
 
 ---
 
-## Deploying to Production
+## 🌍 Deploying to Production
 
 ### Vercel (Recommended)
 
@@ -148,9 +147,13 @@ Update `NEXT_PUBLIC_APP_URL` to your production URL in Supabase Auth settings:
 
 ---
 
-## Tips
+## 💡 Tips
 
 - **Mobile-first**: works perfectly on iPhone/Android browsers
 - **No Stripe needed**: everything is DM-based
 - **Google OAuth**: works out of the box with Supabase — just enable it in Supabase Auth → Providers
 - **Images**: stored in Supabase Storage, CDN-served globally
+
+---
+
+Built with ❤️ for the gem community.

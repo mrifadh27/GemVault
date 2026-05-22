@@ -4,13 +4,14 @@ import { useState, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Upload, X, Plus, Loader2, ChevronDown, Info,
-  Camera, Tag, MapPin, Award, DollarSign
+  Camera, Tag, MapPin, Award, DollarSign, Video, Layers, Palette
 } from 'lucide-react';
 import { cn, getImageUrl } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
 import { Navbar } from '@/components/layout/Navbar';
 import { BottomNav } from '@/components/layout/BottomNav';
 import { toast, ToastContainer } from '@/components/common/Toast';
+import { ColorGradingPicker } from '@/components/common/ColorGradingPicker';
 
 const GEMSTONE_TYPES = [
   'Ruby', 'Sapphire', 'Emerald', 'Diamond', 'Amethyst', 'Opal',
@@ -59,6 +60,14 @@ export default function CreatePage() {
   const [isPriceNegotiable, setIsPriceNegotiable] = useState(false);
   const [tags, setTags] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  // New feature state
+  const [colorHue, setColorHue] = useState('');
+  const [colorTone, setColorTone] = useState<number | undefined>();
+  const [colorSaturation, setColorSaturation] = useState<number | undefined>();
+  const [videoUrl, setVideoUrl] = useState('');
+  const [isLot, setIsLot] = useState(false);
+  const [lotStoneCount, setLotStoneCount] = useState('');
+  const [showColorGrading, setShowColorGrading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
 
   const addFiles = useCallback((files: FileList | File[]) => {
@@ -128,6 +137,13 @@ export default function CreatePage() {
           is_price_negotiable: isPriceNegotiable,
           tags: tagList,
           image_urls: uploadedUrls,
+          // New fields
+          color_hue: colorHue || undefined,
+          color_tone: colorTone || undefined,
+          color_saturation: colorSaturation || undefined,
+          video_url: videoUrl.trim() || undefined,
+          is_lot: isLot,
+          lot_stone_count: isLot && lotStoneCount ? parseInt(lotStoneCount) : undefined,
         }),
       });
 
@@ -411,6 +427,78 @@ export default function CreatePage() {
                 placeholder="ruby, unheated, burma, natural (comma separated)"
                 className="input"
               />
+            </div>
+
+            {/* Lot listing */}
+            <div className="p-4 rounded-xl bg-[#0f0f0f] border border-[#1e1e1e]">
+              <label className="flex items-center justify-between cursor-pointer mb-2">
+                <div className="flex items-center gap-2">
+                  <Layers className="w-4 h-4 text-blue-400" />
+                  <span className="text-sm font-medium text-ivory">Lot / Parcel Listing</span>
+                </div>
+                <div
+                  onClick={() => setIsLot(v => !v)}
+                  className={cn('w-10 h-5 rounded-full transition-colors relative', isLot ? 'bg-blue-500' : 'bg-[#2a2a2a]')}
+                >
+                  <div className={cn('absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all', isLot ? 'left-5' : 'left-0.5')} />
+                </div>
+              </label>
+              <p className="text-xs text-ivory-subtle mb-3">Enable if you're selling multiple stones together as a parcel or matched suite.</p>
+              {isLot && (
+                <div>
+                  <label className="label">Number of Stones in Lot</label>
+                  <input
+                    type="number"
+                    value={lotStoneCount}
+                    onChange={e => setLotStoneCount(e.target.value)}
+                    placeholder="e.g. 5"
+                    min="2"
+                    className="input"
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Color grading */}
+            <div className="p-4 rounded-xl bg-[#0f0f0f] border border-[#1e1e1e]">
+              <button
+                type="button"
+                onClick={() => setShowColorGrading(v => !v)}
+                className="flex items-center justify-between w-full"
+              >
+                <div className="flex items-center gap-2">
+                  <Palette className="w-4 h-4 text-purple-400" />
+                  <span className="text-sm font-medium text-ivory">GIA Color Grading</span>
+                  {colorHue && (
+                    <span className="text-xs text-gold bg-gold/10 px-2 py-0.5 rounded-full">{colorHue}</span>
+                  )}
+                </div>
+                <span className="text-xs text-ivory-subtle">{showColorGrading ? 'Hide' : 'Add grading'}</span>
+              </button>
+              <p className="text-xs text-ivory-subtle mt-1 mb-3">Optional but makes your listing searchable by color.</p>
+              {showColorGrading && (
+                <ColorGradingPicker
+                  value={{ hue: colorHue, tone: colorTone, saturation: colorSaturation }}
+                  onChange={v => { setColorHue(v.hue || ''); setColorTone(v.tone); setColorSaturation(v.saturation); }}
+                />
+              )}
+            </div>
+
+            {/* Video URL */}
+            <div>
+              <label className="label">
+                <Video className="w-3 h-3 inline mr-1" />
+                Video URL <span className="text-ivory-subtle font-normal text-[10px] normal-case">(optional — essential for alexandrite, opal, star stones)</span>
+              </label>
+              <input
+                value={videoUrl}
+                onChange={e => setVideoUrl(e.target.value)}
+                placeholder="https://… (direct video link or YouTube)"
+                className="input"
+              />
+              {videoUrl && (
+                <p className="text-[10px] text-gold mt-1">📹 Video will appear as a toggle on your listing</p>
+              )}
             </div>
 
             {/* Info notice */}
