@@ -1,4 +1,4 @@
-#  GemGram — Instagram for Gem Sellers
+#  GemGram — Instagram Style Gem Sell Web App
 
 > The fastest way to sell gems online. Post your gems like Instagram, buyers DM you to buy.
 
